@@ -1,0 +1,21 @@
+[package]
+name = "wkhtml-rs"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+description = "Drop-in wkhtmltopdf replacement for Odoo, built on fulgur (pure Rust, no browser)"
+
+[[bin]]
+name = "wkhtmltopdf"
+path = "src/main.rs"
+
+[dependencies]
+fulgur = { path = "/home/machin/Work/ODOO_Only/ODOO/fulgur/crates/fulgur" }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+lopdf = "0.44"
+
+[profile.release]
+lto = true
+strip = true
+opt-level = 3
