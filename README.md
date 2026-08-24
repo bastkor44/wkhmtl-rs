@@ -10,19 +10,23 @@ no Chromium/WebKit dependency.
 
 Odoo drives `wkhtmltopdf` as a subprocess with a specific CLI dialect (see
 `ir_actions_report.py::_build_wkhtmltopdf_args`) and parses `--version` output.
-This binary reproduces that contract exactly:
+This binary reproduces that contract:
 
 - `--version` → `wkhtmltopdf 0.12.6 (with patched qt)` — Odoo detects "ok"
   state, patched-QT multi-document mode, and dpi zoom ratio (≥ 0.12.2).
-- Supports every flag Odoo emits: `--page-size`, `--page-width/--page-height`,
+- Parses every flag Odoo emits: `--page-size`, `--page-width/--page-height`,
   `--orientation`, `--margin-{top,bottom,left,right}`, `--dpi`, `--zoom`,
   `--header-html`, `--footer-html`, `--header-spacing`, `--header-line`,
   `--disable-smart-shrinking`, `--disable-local-file-access`,
   `--javascript-delay`, `--viewport-size`, `--cookie-jar`, `--quiet`.
 - Multiple input HTML files → one merged PDF with per-document **top-level
-  outline entries**, which Odoo's `_split_pdf_from_reports` uses to split
-  batch reports back into per-record PDFs.
-- Header/footer fragments stamped onto every page via Form XObjects.
+  outline entries** in wkhtml `/Dest` + catalog `/Dests` form, which Odoo's
+  `_split_pdf_from_reports` uses to split batch reports back into per-record
+  PDFs.
+- Header/footer fragments stamped onto every page as Form XObjects, clipped
+  to the top/bottom margin bands.
+- Hard failures print to stderr and exit **2** (Odoo treats exit 1 as
+  success-with-warning).
 
 ## Install for Odoo
 
@@ -47,8 +51,24 @@ wkhtmltopdf --header-html hdr.html --footer-html ftr.html body.html out.pdf
 - Rendering is done by fulgur's own CSS engine — not WebKit. Standard Odoo
   report layouts (Bootstrap-era tables, floats, flexbox basics) render well;
   exotic WebKit-specific CSS may differ slightly. Test your print formats.
-- `--cookie-jar` is parsed but unused (no network fetching; pass local files).
+- `--zoom` is injected as `<style>html { zoom: N }</style>` on each body.
+  `--dpi` is parsed (Odoo always sends both together for patched Qt).
+- `--header-line` strokes a rule under the header band. `--header-spacing`
+  is parsed and used for that rule’s y-position; header band placement itself
+  stays `page_height − margin_top`.
 - `--javascript-delay` is accepted as a compatibility no-op (no JS engine).
+
+### Known gaps
+
+- **No HTTP(S) / cookie-jar asset fetching.** fulgur drops non-`file://` URLs,
+  so remote CSS and logos (`/web/assets/…`, `/web/image/…`) will not load.
+  `--cookie-jar` is parsed but unused. Inline `<style>` survives.
+- **Header/footer `subst()` JS protocol is not implemented.** Odoo’s
+  `web.minimal_layout` relies on wkhtmltopdf injecting `?page=&topage=&webpage=`
+  and running `subst()` so per-record headers and `.page` / `.topage` resolve.
+  The same static fragment is stamped on every page.
+- **Zoom is a CSS hint.** If fulgur ignores `html { zoom }`, patched-Qt
+  `--zoom 96.0/dpi` scaling will not take effect.
 
 ## License
 

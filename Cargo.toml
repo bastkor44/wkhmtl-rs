@@ -10,8 +10,7 @@ name = "wkhtmltopdf"
 path = "src/main.rs"
 
 [dependencies]
-fulgur = { path = "/home/machin/Work/ODOO_Only/ODOO/fulgur/crates/fulgur" }
-clap = { version = "4", features = ["derive"] }
+fulgur = { path = "../fulgur/crates/fulgur" }
 anyhow = "1"
 lopdf = "0.44"
 
