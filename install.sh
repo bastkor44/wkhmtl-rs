@@ -36,7 +36,43 @@ say()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
-cd "$(dirname "$0")"
+# --- source bootstrap --------------------------------------------------------
+# The script can be run three ways:
+#   1. from a clone:            ./install.sh            (build in place)
+#   2. via curl | bash:         no repo anywhere        (clone into WORKROOT)
+#   3. curl | bash inside an existing clone's dir — same as 1.
+WKRS_REPO="${WKRS_REPO:-https://github.com/bastkor44/wkhmtl-rs.git}"
+FULGUR_REPO="${FULGUR_REPO:-https://github.com/bastkor44/fulgur.git}"
+WORKROOT="${WORKROOT:-${HOME}/.cache/wkhtml-rs}"
+
+SCRIPT_DIR="$(dirname "$0")"
+# Piped scripts live in /dev/stdin or /tmp — detect "no real checkout".
+if [[ -f Cargo.toml && -d src ]]; then
+    SRC_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+else
+    SRC_DIR="$WORKROOT/src/wkhtml-rs"
+fi
+FULGUR_DIR="$(dirname "$SRC_DIR")/fulgur"
+
+bootstrap() {
+    local url=$1 dest=$2 name=$3
+    if [[ -d $dest/.git ]]; then
+        say "updating ${name} at ${dest}"
+        git -C "$dest" pull --ff-only >/dev/null 2>&1 || warn "git pull failed for ${name}; using existing checkout"
+    else
+        say "cloning ${name} into ${dest}"
+        mkdir -p "$(dirname "$dest")"
+        git clone --depth 1 "$url" "$dest" >&2 || die "failed to clone ${name} from ${url}"
+    fi
+}
+
+if [[ ! -f "${SRC_DIR}/Cargo.toml" ]]; then
+    bootstrap "$WKRS_REPO" "$SRC_DIR" wkhtml-rs
+fi
+# fulgur must sit next to wkhtml-rs (Cargo relative path dep ../fulgur/...).
+bootstrap "$FULGUR_REPO" "$FULGUR_DIR" fulgur
+
+cd "$SRC_DIR"
 
 # --- prerequisites ----------------------------------------------------------
 if ! command -v cargo >/dev/null 2>&1; then
@@ -46,7 +82,7 @@ if ! command -v cargo >/dev/null 2>&1; then
 fi
 command -v cargo >/dev/null 2>&1 || die "cargo is still unavailable; install Rust from https://rustup.rs"
 
-[[ -d ../fulgur/crates/fulgur ]] || die "sibling fulgur crate missing at ../fulgur/crates/fulgur (clone it next to this repo)"
+[[ -d ${FULGUR_DIR}/crates/fulgur ]] || die "fulgur crate missing at ${FULGUR_DIR}/crates/fulgur after bootstrap"
 
 # --- existing installation --------------------------------------------------
 TARGET="${BIN_DIR}/wkhtmltopdf"
