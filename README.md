@@ -28,15 +28,50 @@ This binary reproduces that contract:
 - Hard failures print to stderr and exit **2** (Odoo treats exit 1 as
   success-with-warning).
 
-## Install for Odoo
+## Install
+
+### One-liner (curl)
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/bastkor44/wkhmtl-rs/main/install.sh | bash -s -- --user
+```
+
+Drop `--user` (and prefix with `sudo`) for a system-wide install to
+`/usr/local/bin`. The script:
+
+- installs a Rust toolchain via rustup if `cargo` is missing,
+- verifies the sibling fulgur crate is present (build-time dependency),
+- runs `cargo build --release`,
+- installs the binary as `wkhtmltopdf` (refusing to clobber a real
+  wkhtmltopdf unless you confirm / pass `--force`),
+- smoke-tests the installed binary by rendering a tiny PDF.
+
+### Manual
+
+```bash
+git clone git@github.com:bastkor44/wkhmtl-rs.git
+cd wkhmtl-rs
 cargo build --release
 sudo cp target/release/wkhtmltopdf /usr/local/bin/wkhtmltopdf
 ```
 
 That's it — Odoo finds it on `$PATH` and treats it as a fully-patched Qt
 wkhtmltopdf 0.12.6. Remove the real wkhtmltopdf first if it's also installed.
+
+### Point Odoo at it
+
+Either start Odoo with:
+
+```bash
+odoo --wkhtmltopdf=/usr/local/bin/wkhtmltopdf
+```
+
+or in `odoo.conf`:
+
+```ini
+[options]
+wkhtmltopdf = /usr/local/bin/wkhtmltopdf
+```
 
 ## Usage (standalone)
 

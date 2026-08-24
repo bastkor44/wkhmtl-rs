@@ -18,3 +18,7 @@ lopdf = "0.44"
 lto = true
 strip = true
 opt-level = 3
+
+
+[dev-dependencies]
+tempfile = "3.27.0"
