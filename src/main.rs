@@ -1,5 +1,6 @@
 // wkhtml-rs — drop-in wkhtmltopdf replacement for Odoo, built on fulgur.
 mod args;
+mod datauri;
 mod render;
 
 use std::process::ExitCode;

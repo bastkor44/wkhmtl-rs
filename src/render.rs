@@ -4,6 +4,7 @@
 //! merged PDF whose top-level outline entries delimit each record).
 
 use crate::args::{PageSizeSpec, WkArgs};
+use crate::datauri::DataUriCache;
 use anyhow::Context;
 use fulgur::config::{Margin, PageSize};
 use fulgur::engine::{Engine, EngineBuilder};
@@ -175,12 +176,16 @@ pub fn run(a: WkArgs) -> anyhow::Result<()> {
 
     // Render each body file separately so per-record outlines stay intact,
     // then concatenate.
+    let mut data_cache = DataUriCache::new()?;
     let mut parts: Vec<Vec<u8>> = Vec::new();
     for path in &a.input_files {
         let html = std::fs::read_to_string(path)
             .with_context(|| format!("reading input {}", path.display()))?;
+        let html = data_cache.rewrite(&html);
         let html = inject_zoom(&html, a.zoom);
-        let engine = maybe_base_path(engine_builder(&a, size, margin), &a, path).build();
+        let engine = maybe_base_path(engine_builder(&a, size, margin), &a, path)
+            .assets(data_cache.clone_bundle())
+            .build();
         let pdf = engine
             .render(&html)
             .with_context(|| format!("rendering {}", path.display()))?;
@@ -208,6 +213,8 @@ fn render_fragment(
     let html =
         std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
     let frag = wrap_fragment(&html, None);
+    let mut data_cache = DataUriCache::new()?;
+    let frag = data_cache.rewrite(&frag);
     let size = PageSize {
         width: page_width,
         height: band_height.max(1.0),
@@ -215,7 +222,8 @@ fn render_fragment(
     let engine = maybe_base_path(
         Engine::builder()
             .page_size(size)
-            .margin(Margin::uniform(0.0)),
+            .margin(Margin::uniform(0.0))
+            .assets(data_cache.clone_bundle()),
         a,
         path,
     )
