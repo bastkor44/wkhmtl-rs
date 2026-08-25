@@ -13,6 +13,8 @@ path = "src/main.rs"
 fulgur = { path = "../fulgur/crates/fulgur" }
 anyhow = "1"
 lopdf = "0.44"
+base64 = "0.23.1"
+regex = "1.13.1"
 
 [profile.release]
 lto = true
